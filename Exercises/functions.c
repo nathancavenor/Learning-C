@@ -10,6 +10,24 @@ typedef struct {
     Card cards[5];
 } Hand;
 
+typedef struct{
+    int rank_value;
+    int tiebreaks[5];
+} HandValue;
+
+int top_of_straight(Hand *h){
+    int counts[15] = {0};
+    for (int i=0; i<5; i++) counts[h->cards[i].rank] = 1;
+
+    for (int i=14; i>=5; i--){
+        if (counts[i] && counts[i-1] && counts[i-2] && counts[i-3] && counts[i-4])
+            return i;
+    }
+    if (counts[14] && counts[2] && counts[3] && counts[4] && counts[5])
+        return 5;
+    return 0;
+}
+
 int is_flush(Hand *h){
     char first_suit = h->cards[0].suit;
     for (int i = 1; i< 5; i++) {
@@ -23,7 +41,7 @@ int is_straight(Hand *h){
     int counts[15] = {0};
     int i;
 
-    for (i=0; i<5; i++){
+    for (int i=0; i<5; i++){
         int rank = h->cards[i].rank;
         counts[rank]++;
         if (counts[rank] >1){
@@ -69,50 +87,136 @@ int is_straight_flush(Hand *h){
     return is_straight(h);
 }
 
-int n_of_a_kind(Hand *h){
+HandValue n_of_a_kind(Hand *h){
     int counts[15] = {0};
+    HandValue val = {0};
+
     for (int i = 0; i< 5; i++) counts[h->cards[i].rank]++;
+    
     int max_1 = 0;
     int max_2 = 0;
-    for (int i = 2; i<15; i++){
+
+    int rank_1 = 0;
+    int rank_2 = 0;
+
+    for (int i = 2; i < 15; i++){
         if (counts[i] > max_1){
-            max_2 = max_1;
-            max_1 = counts[i];
-        } else if (counts[i] > max_2) {
-            max_2 = counts[i];
+            max_2 = max_1; rank_2 = rank_1;
+            max_1 = counts[i]; rank_1 = i;
+        } else if (counts[i] > max_2){
+            max_2 = counts[i]; rank_2 = i;
         }
     }
-    if (max_1 == 4){return 8;}
-    if (max_1 == 3 && max_2 == 2){return 7;}
-    if (max_1 == 3 && max_2 != 2){return 4;}
-    if (max_1 == 2 && max_2 == 2){return 3;}
-    if (max_1 ==2 && max_2 != 2){return 2;}
-    return 0;
+
+    if (max_1 == 4){
+        val.rank_value = 8;
+        val.tiebreaks[0] = rank_1;
+
+        for (int i = 14, k = 1; i >=2; i--){
+            if (i!= rank_1 && counts[i]){
+                val.tiebreaks[k++] = i;
+            }
+        }
+    } else if (max_1 == 3 && max_2 == 2){
+        val.rank_value = 7;
+        val.tiebreaks[0] = rank_1;
+        val.tiebreaks[1] = rank_2;
+    } else if (max_1 == 3){
+        val.rank_value = 4;
+        val.tiebreaks[0] = rank_1;
+        for (int i = 14, k = 1; i>= 2; i--){
+            if (i != rank_1 && counts[i]){
+                val.tiebreaks[k++] = i;
+            }
+        }
+    } else if (max_1 == 2 && max_2 == 2){
+        val.rank_value = 3;
+        val.tiebreaks[0] = (rank_1 > rank_2) ? rank_1 : rank_2;
+        val.tiebreaks[1] = (rank_1 > rank_2) ? rank_2 : rank_1;
+
+        for (int i = 14; i >= 2; i--){
+            if (counts[i] == 1){
+                val.tiebreaks[2] = i;
+            }
+        }
+    } else if (max_1 == 2) {
+        val.rank_value = 2;
+        val.tiebreaks[0] = rank_1;
+        for (int i = 14, k = 1; i>=2; i--){
+            if (i!= rank_1 && counts[i]){
+                val.tiebreaks[k++] = i;
+            }
+        }
+    } else {
+        val.rank_value = 1;
+        for (int i = 14, k = 0; i>=2; i--){
+            if (counts[i]){
+                val.tiebreaks[k++] = i;
+            }
+        }
+    }
+
+    return val;
 }
 
 
-int hand_rank(Hand *h){
+HandValue hand_value(Hand *h){
+    HandValue val = n_of_a_kind(h); 
+    if (is_royal_flush(h)){
+        val.rank_value = 10;
+        return val;
+    }
+    if (is_straight_flush(h)){
+        val.rank_value = 9;
+        val.tiebreaks[0] = top_of_straight(h);
+        return val;
+    }
     if (is_flush(h)){
-        if (is_royal_flush(h)){
-            return 10;
+        val.rank_value = 6;
+        int counts[15] = {0};
+        for (int i = 0; i < 5; i++){
+            counts[h->cards[i].rank]++;
         }
-        return 6;
-    } else if (is_straight_flush(h)){
-        return 9;
+        for (int i = 14, k = 0; i >= 2; i--){
+            if (counts[i]) val.tiebreaks[k++] = i;
+        }
+        return val;
     }
     if (is_straight(h)){
-        return 5;
+        val.rank_value = 5;
+        val.tiebreaks[0] = top_of_straight(h);
+        return val;
     }
-    return n_of_a_kind(h);
+    return val;
+}
+
+
+int compare_hands(HandValue a, HandValue b){
+    if (a.rank_value != b.rank_value){
+        return (a.rank_value > b.rank_value) ? 1: -1;}
+    for (int i= 0; i < 5; i++){
+        if (a.tiebreaks[i] != b.tiebreaks[i]){
+            return (a.tiebreaks[i] > b.tiebreaks[i]) ? 1 : -1;
+        }
+    }
+    return 0;
 }
 
 int main(){
     Hand h1 = {{{14, 'S'}, {13, 'S'}, {12, 'S'}, {11, 'S'}, {10, 'S'}}};
     Hand h2 = {{{10, 'H'}, {10, 'D'}, {10, 'C'}, {9, 'S'}, {9, 'H'}}};
-    if (is_royal_flush(&h1)){
-        printf("The first hand is a royal flush\n");
+    
+    HandValue hv1 = hand_value(&h1);
+    HandValue hv2 = hand_value(&h2);
+
+    int result = compare_hands(hv1, hv2);
+    if (result == 1){
+        printf("Hand 1 wins\n");
+    } else if (result == -1){
+        printf("Hand 2 wins \n");
     } else {
-        printf("The first hand is not a royal flush\n");
+        printf("It's an exact draw!");
     }
+
     return 0;
 }
