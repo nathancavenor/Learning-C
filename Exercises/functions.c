@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct {
     int rank;
@@ -203,8 +204,11 @@ int compare_hands(HandValue a, HandValue b){
 }
 
 int main(){
-    Hand h1 = {{{14, 'S'}, {13, 'S'}, {12, 'S'}, {11, 'S'}, {10, 'S'}}};
-    Hand h2 = {{{10, 'H'}, {10, 'D'}, {10, 'C'}, {9, 'S'}, {9, 'H'}}};
+    clock_t start = clock();
+
+    Hand h2 = {{{14, 'S'}, {13, 'S'}, {12, 'S'}, {11, 'S'}, {10, 'S'}}};
+    Hand h3 = {{{14, 'S'}, {13, 'S'}, {12, 'S'}, {11, 'S'}, {10, 'S'}}};
+    Hand h1 = {{{10, 'H'}, {10, 'D'}, {10, 'C'}, {9, 'S'}, {9, 'H'}}};
     
     HandValue hv1 = hand_value(&h1);
     HandValue hv2 = hand_value(&h2);
@@ -215,8 +219,12 @@ int main(){
     } else if (result == -1){
         printf("Hand 2 wins \n");
     } else {
-        printf("It's an exact draw!");
+        printf("It's an exact draw!\n");
     }
+
+    clock_t end = clock();
+    double elapsed = (double)(end-start)/CLOCKS_PER_SEC;
+    printf("Elapsed time: %.6f seconds\n", elapsed);
 
     return 0;
 }
